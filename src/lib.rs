@@ -1,8 +1,9 @@
 use std::path::PathBuf;
+use std::fmt;
 
 use directories::ProjectDirs;
+use jsonschema::JSONSchema;
 use serde_json::Value;
-
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -12,36 +13,44 @@ pub enum StoreError {
     #[error("invalid key-value set")]
     InvalidSet,
     #[error("invalid key")]
-    InvalidKey
+    InvalidKey,
 }
 
+#[derive(Debug)]
 pub struct Store {
     path: PathBuf,
     // schema: serde_json::Value,
     // config: serde_json::Value
 }
 
+impl fmt::Display for Store {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.path.to_string_lossy())
+    }
+}
+
 impl Store {
-    pub fn new(company_name: String, app_name: String) -> Result<Store, StoreError> {
+    pub fn new(company_name: String, app_name: String, schema: JSONSchema) -> Result<Store, StoreError> {
         // See if a config json file exists in the UserData directory for the provided app name
-
+        // Get the config directory
         if let Some(proj_dirs) = ProjectDirs::from("com", &company_name, &app_name) {
-            let config_dir = PathBuf::from(proj_dirs.config_dir());
+            let config_path = PathBuf::from(proj_dirs.config_dir()).join("config.json");
 
-            return Ok(Store {path: config_dir});
-        } else {
-            return Err(StoreError::InitError);
-        }
+            // If the file exists, load it
+            if config_path.exists() {
 
-        // If the file exists, load it
+            }
 
-        // Validate the config against the schema
+            // Validate the config against the schema
 
-        // If it passes, be happy and return the config object
+            // If it passes, be happy and return the config object
 
             // if it fails, or if the file doesn't exist, generate a new config using the default values from the schema, return the config object
 
-        
+            return Ok(Store { path: config_path });
+        } else {
+            return Err(StoreError::InitError);
+        }
     }
 
     // Get a value from the store, or the default if it doesn't exist, or error if it isn't a valid key
@@ -52,7 +61,7 @@ impl Store {
 
         // Validate the config against the schema
 
-        return Err(StoreError::InvalidKey)
+        return Err(StoreError::InvalidKey);
     }
 
     // Set a key-value pair
@@ -70,25 +79,27 @@ impl Store {
 
     // Delete an object
     pub fn delete(key: String) -> Result<(), StoreError> {
-        return Err(StoreError::InvalidKey)
+        return Err(StoreError::InvalidKey);
     }
 
     // Reset keys to their default values as defined in the schema
     pub fn reset(key: Option<String>) -> Result<(), StoreError> {
-        return Err(StoreError::InvalidKey)
+        return Err(StoreError::InvalidKey);
     }
-
-
 }
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // #[test]
-    // fn it_works() {
-    //     let result = add(2, 2);
-    //     assert_eq!(result, 4);
-    // }
+    #[test]
+    fn init_store() {
+        let company_name: &str = "ACME";
+        let app_name: &str = "Dynamite";
+        if let Ok(store) = Store::new(company_name.to_string(), app_name.to_string()) {
+            println!("{}", store);
+        } else {
+            panic!("Failed to initialize store")
+        }
+    }
 }
