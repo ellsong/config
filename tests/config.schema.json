@@ -1,0 +1,72 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "test config",
+    "description": "a test",
+    "type": "object",
+    "required": ["aSetting", "anotherSetting", "lastSetting"],
+    "properties": {
+        "aSetting": {
+            "description": "first test setting",
+            "type": "object",
+            "required": ["i", "j", "k"],
+            "properties": {
+                "i": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 700,
+                    "default": 400
+                },
+                "j": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 300,
+                    "default:": 250
+                },
+                "k": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 280,
+                    "default": 215
+                }
+            }
+        },
+        "anotherSetting": {
+            "description": "second test setting",
+            "type": "object",
+            "required": ["x", "y", "z"],
+            "properties": {
+                "x": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10,
+                    "default": 2
+                },
+                "y": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10,
+                    "default": 1
+                },
+                "z": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10,
+                    "default": 0.5
+                }
+            }
+        },
+        "lastSetting": {
+            "description": "last test setting",
+            "type": "object",
+            "required": ["set"],
+            "properties": {
+                "set": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10,
+                    "default": 0.1
+                }
+            }
+        }
+    }
+  }
