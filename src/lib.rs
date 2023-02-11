@@ -110,8 +110,16 @@ impl Store {
     }
 
     // Check if a key exists
-    pub fn has(key: String) -> bool {
-        return false;
+    pub fn has(&self, key: String) -> bool {
+        let mut current_value: &Value = &self.config;
+        for index in key.split(".") {
+            if let Some(object) = current_value.get(index) {
+                current_value = object;
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 
     // Delete an object
