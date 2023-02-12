@@ -3,7 +3,7 @@
     "title": "test config",
     "description": "a test",
     "type": "object",
-    "required": ["aSetting", "anotherSetting", "lastSetting"],
+    "required": ["aSetting", "anotherSetting"],
     "properties": {
         "aSetting": {
             "description": "first test setting",
@@ -55,10 +55,9 @@
                 }
             }
         },
-        "lastSetting": {
-            "description": "last test setting",
+        "deletableSetting": {
+            "description": "non-required test setting",
             "type": "object",
-            "required": ["set"],
             "properties": {
                 "set": {
                     "type": "number",

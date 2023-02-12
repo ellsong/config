@@ -20,6 +20,8 @@ pub enum StoreError {
     InvalidSet,
     #[error("invalid key")]
     InvalidKey,
+    #[error("invalid key-value delete")]
+    InvalidDelete,
 }
 
 #[derive(Debug)]
@@ -144,7 +146,7 @@ impl Store {
             if let Some(v) = current_value.get_mut(key) {
                 current_value = v;
             } else {
-                return Err(StoreError::InvalidSet);
+                return Err(StoreError::InvalidKey);
             }
         }
         *current_value = value;
@@ -161,10 +163,10 @@ impl Store {
     }
 
     // Check if a key exists
-    pub fn has(&self, key: String) -> bool {
+    pub fn has(&self, keys: String) -> bool {
         let mut current_value: &Value = &self.config;
-        for index in key.split(".") {
-            if let Some(object) = current_value.get(index) {
+        for key in keys.split(".") {
+            if let Some(object) = current_value.get(key) {
                 current_value = object;
             } else {
                 return false;
@@ -174,8 +176,36 @@ impl Store {
     }
 
     // Delete an object
-    pub fn delete(key: String) -> Result<(), StoreError> {
-        return Err(StoreError::InvalidKey);
+    pub fn delete(&mut self, keys: String) -> Result<(), StoreError> {
+        // make a copy of the config
+        let mut config = self.config.clone();
+        let mut current_value: &mut Value = &mut config;
+        // // update the value in the config copy
+        let mut keys = keys.split(".").peekable();
+        while let Some(key) = keys.next() {
+            if keys.peek().is_none() {
+                println!("{}, {}", current_value, key);
+                if let Some(_deleted) = current_value.as_object_mut().unwrap().remove_entry(key) {
+
+                } else {
+                    return Err(StoreError::InvalidKey);
+                }
+            } else if let Some(v) = current_value.get_mut(key) {
+                current_value = v;
+            } else {
+                return Err(StoreError::InvalidKey);
+            }
+        }
+
+        if let Some(schema) = &self.schema {
+            if schema.is_valid(&config) {
+                self.config = config;
+            } else {
+                return Err(StoreError::InvalidDelete);
+            }
+        }
+
+        return Ok(());
     }
 
     // Reset keys to their default values as defined in the schema
@@ -271,5 +301,24 @@ mod tests {
             .unwrap_err();
         let expected = StoreError::InvalidSet;
         assert_eq!(result, expected);
+    }
+    #[test]
+    fn test_delete() {
+        let mut store = Store::new(
+            String::from("ACME"),
+            String::from("Dynamite"),
+            Some(PathBuf::from("tests/config.schema.json")),
+            Some(PathBuf::from("tests/")),
+        )
+        .expect("failed to load test config");
+
+        // test for deleting a key that is required
+        let result = store.delete(String::from("aSetting.i")).unwrap_err();
+        let expected = StoreError::InvalidDelete;
+        assert_eq!(result, expected);
+
+        // test for deleting an optional key
+        store.delete(String::from("deletableSetting")).unwrap();
+        assert!(!store.has(String::from("deletableSetting")));
     }
 }
