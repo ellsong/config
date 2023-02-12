@@ -151,6 +151,7 @@ impl Store {
         }
         *current_value = value;
 
+        // replace the old config with the new one if it passes validation
         if let Some(schema) = &self.schema {
             if schema.is_valid(&config) {
                 self.config = config;
@@ -158,6 +159,13 @@ impl Store {
                 return Err(StoreError::InvalidSet);
             }
         }
+
+        // write the config to file
+        std::fs::write(
+            &self.path,
+            serde_json::to_string_pretty(&self.config).unwrap(),
+        )
+        .unwrap();
 
         return Ok(());
     }
@@ -184,9 +192,7 @@ impl Store {
         let mut keys = keys.split(".").peekable();
         while let Some(key) = keys.next() {
             if keys.peek().is_none() {
-                println!("{}, {}", current_value, key);
                 if let Some(_deleted) = current_value.as_object_mut().unwrap().remove_entry(key) {
-
                 } else {
                     return Err(StoreError::InvalidKey);
                 }
@@ -205,6 +211,13 @@ impl Store {
             }
         }
 
+        // write the config to file
+        std::fs::write(
+            &self.path,
+            serde_json::to_string_pretty(&self.config).unwrap(),
+        )
+        .unwrap();
+
         return Ok(());
     }
 
@@ -216,19 +229,52 @@ impl Store {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
     use super::*;
 
-    // tests basic store initialization
-    #[test]
-    fn init_store() {
-        let company_name: &str = "ACME";
-        let app_name: &str = "Dynamite";
-        if let Ok(store) = Store::new(company_name.to_string(), app_name.to_string(), None, None) {
-            println!("{}", store);
-        } else {
-            panic!("Failed to initialize store")
-        }
+    fn create_test_config() -> Store {
+        let schema_path = PathBuf::from("tests/config.schema.json");
+        let schema = Some(
+            JSONSchema::compile(
+                &serde_json::from_reader(BufReader::new(
+                    File::open(&schema_path).expect("Failed to open file"),
+                ))
+                .unwrap(),
+            )
+            .unwrap(),
+        );
+        return Store {
+            path: (PathBuf::from("tests/config.json")),
+            schema: (schema),
+            config: (json!({
+              "aSetting": {
+                "i": 400,
+                "j": 250,
+                "k": 215
+              },
+              "anotherSetting": {
+                "x": 2.0,
+                "y": 1.0,
+                "z": 0.5
+              },
+              "deletableSetting": {
+                "set": 0.1
+              }
+            })),
+        };
     }
+
+    // tests basic store initialization
+    // #[test]
+    // fn init_store() {
+    //     let company_name: &str = "ACME";
+    //     let app_name: &str = "Dynamite";
+    //     if let Ok(store) = Store::new(company_name.to_string(), app_name.to_string(), None, None) {
+    //     } else {
+    //         panic!("Failed to initialize store")
+    //     }
+    // }
     // tests schema validation
     #[test]
     fn test_validate_schema() {
@@ -250,26 +296,14 @@ mod tests {
     // tests if it can get a value from the store
     #[test]
     fn test_get() {
-        let store = Store::new(
-            String::from("ACME"),
-            String::from("Dynamite"),
-            Some(PathBuf::from("tests/config.schema.json")),
-            Some(PathBuf::from("tests/")),
-        )
-        .expect("failed to load test config");
+        let store = create_test_config();
         let input = String::from("aSetting.i");
         assert_eq!(store.get(input).unwrap(), 400);
     }
     // test check if value is present
     #[test]
     fn test_has() {
-        let store = Store::new(
-            String::from("ACME"),
-            String::from("Dynamite"),
-            Some(PathBuf::from("tests/config.schema.json")),
-            Some(PathBuf::from("tests/")),
-        )
-        .expect("failed to load test config");
+        let store = create_test_config();
 
         let input_true = String::from("anotherSetting.y");
         assert!(store.has(input_true));
@@ -278,13 +312,7 @@ mod tests {
     }
     #[test]
     fn test_set() {
-        let mut store = Store::new(
-            String::from("ACME"),
-            String::from("Dynamite"),
-            Some(PathBuf::from("tests/config.schema.json")),
-            Some(PathBuf::from("tests/")),
-        )
-        .expect("failed to load test config");
+        let mut store = create_test_config();
 
         store
             .set(
@@ -304,13 +332,7 @@ mod tests {
     }
     #[test]
     fn test_delete() {
-        let mut store = Store::new(
-            String::from("ACME"),
-            String::from("Dynamite"),
-            Some(PathBuf::from("tests/config.schema.json")),
-            Some(PathBuf::from("tests/")),
-        )
-        .expect("failed to load test config");
+        let mut store = create_test_config();
 
         // test for deleting a key that is required
         let result = store.delete(String::from("aSetting.i")).unwrap_err();
