@@ -12,7 +12,7 @@ fn default_config(schema: &JSONSchema) -> Value {
     return Value::from("value");
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum StoreError {
     #[error("failed to initialize store")]
     InitError,
@@ -63,7 +63,6 @@ impl Store {
             // make sure the path is a directory that exists
             if path.is_dir() && path.exists() {
                 config_path = path.join("config.json");
-                
             } else {
                 panic!("invalid override path");
             }
@@ -122,11 +121,11 @@ impl Store {
     }
 
     // Get a value from the store, or the default if it doesn't exist, or error if it isn't a valid key
-    pub fn get(&self, key: String) -> Result<Value, StoreError> {
+    pub fn get(&self, keys: String) -> Result<Value, StoreError> {
         let mut current_value: &Value = &self.config;
-        for index in key.split(".") {
-            if let Some(object) = current_value.get(index) {
-                current_value = object;
+        for key in keys.split(".") {
+            if let Some(v) = current_value.get(key) {
+                current_value = v;
             } else {
                 return Err(StoreError::InvalidKey);
             }
@@ -136,11 +135,29 @@ impl Store {
     }
 
     // Set a key-value pair
-    pub fn set(key: String, value: Value) -> Result<(), StoreError> {
-        // Validate value against schema
+    pub fn set(&mut self, keys: String, value: Value) -> Result<(), StoreError> {
+        // make a copy of the config
+        let mut config = self.config.clone();
+        let mut current_value: &mut Value = &mut config;
+        // // update the value in the config copy
+        for key in keys.split(".") {
+            if let Some(v) = current_value.get_mut(key) {
+                current_value = v;
+            } else {
+                return Err(StoreError::InvalidSet);
+            }
+        }
+        *current_value = value;
 
-        // If it passes, write it to the file
-        return Err(StoreError::InvalidSet);
+        if let Some(schema) = &self.schema {
+            if schema.is_valid(&config) {
+                self.config = config;
+            } else {
+                return Err(StoreError::InvalidSet);
+            }
+        }
+
+        return Ok(());
     }
 
     // Check if a key exists
@@ -228,5 +245,31 @@ mod tests {
         assert!(store.has(input_true));
         let input_false = String::from("not.here");
         assert!(!store.has(input_false));
+    }
+    #[test]
+    fn test_set() {
+        let mut store = Store::new(
+            String::from("ACME"),
+            String::from("Dynamite"),
+            Some(PathBuf::from("tests/config.schema.json")),
+            Some(PathBuf::from("tests/")),
+        )
+        .expect("failed to load test config");
+
+        store
+            .set(
+                String::from("aSetting.i"),
+                serde_json::to_value(10).unwrap(),
+            )
+            .unwrap();
+        assert_eq!(store.get(String::from("aSetting.i")).unwrap(), 10);
+        let result = store
+            .set(
+                String::from("aSetting.i"),
+                serde_json::to_value(-10).unwrap(),
+            )
+            .unwrap_err();
+        let expected = StoreError::InvalidSet;
+        assert_eq!(result, expected);
     }
 }
